@@ -68,7 +68,7 @@ This diagram outlines the process of deploying and configuring the GCP services 
 
 
 ## Installation & Deployment Guide
-### A. Initial IAM Setup
+### Initial IAM Setup
 IAM is a critical enabling layer for all service interactions. Ensure these IAM roles are assigned in your your-gcp-project-id project. Replace placeholders like your-gcp-user-email@your-domain.com, your-gcp-project-id, and YOUR_PROJECT_NUMBER with your actual values.
 
 For your user account (your-gcp-user-email@your-domain.com):
@@ -91,7 +91,7 @@ For the Pub/Sub Service Agent (service-YOUR_PROJECT_NUMBER@gcp-sa-pubsub.iam.gse
 
 Cloud Run Invoker (roles/run.invoker) - Crucial for Pub/Sub to trigger 2nd Gen Cloud Functions. You can find your YOUR_PROJECT_NUMBER in your GCP Console dashboard (e.g., 403974804730).
 
-### B. One-Shot Setup and Deployment Script
+### One-Shot Setup and Deployment Script
 This single shell script will handle the creation of all GCP resources, the configuration of IAM roles for service accounts, the creation of Python code files (with injected dynamic values), and the deployment of the Cloud Function.
 
 Before Running:
@@ -102,23 +102,11 @@ Replace YOUR_CLOUD_SQL_PASSWORD with a strong password for your Cloud SQL instan
 
 Replace YOUR_VPC_NETWORK_NAME with your actual VPC network name (e.g., vpcdce or default).
 
-Set your Polygon.io API Key as an environment variable in your shell: export POLYGON_API_KEY='YOUR_POLYGON_API_KEY_HERE' (replace with your actual key).
-
-Execute the script: Copy the entire script below and paste it into your Cloud Shell terminal. Press Enter. This script is designed to be executed as one contiguous block.
-
-#!/bin/bash
+Set your Polygon.io API Key as an environment variable in your shell: 
+```export POLYGON_API_KEY='YOUR_POLYGON_API_KEY_HERE'```
+(replace with your actual key).
 
 
-### This script automates the full setup and deployment of a real-time market data ingestion pipeline on GCP.
-#
-## Before running:
-1. Replace 'your-gcp-project-id' with your actual GCP Project ID.
-2. Replace 'YOUR_CLOUD_SQL_PASSWORD' with a strong password for your Cloud SQL instance.
-3. Replace 'YOUR_VPC_NETWORK_NAME' with your actual VPC network name (e.g., 'vpcdce' or 'default').
-4. Set your Polygon.io API Key as an environment variable before executing this script:
-```export POLYGON_API_KEY='YOUR_POLYGON_API_KEY_HERE'
-###    (Replace 'YOUR_POLYGON_API_KEY_HERE' with your actual Polygon.io API key)###
-```
 # Deploy The Resource
 
 ## Step 1: Set Project ID
