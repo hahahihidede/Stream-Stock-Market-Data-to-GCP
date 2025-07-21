@@ -122,10 +122,10 @@ Execute the script: Copy the entire script below and paste it into your Cloud Sh
 # Deploy The Resource
 
 ## Step 1: Set Project ID
-<pre><code> gcloud config set project ${PROJECT_ID} <pre><code>
+gcloud config set project ${PROJECT_ID} ```
 
 ## Step 2: Activate necessary APIs
-<pre><code>
+```
 gcloud services enable \
     cloudresourcemanager.googleapis.com \
     sqladmin.googleapis.com \
@@ -136,14 +136,14 @@ gcloud services enable \
     eventarc.googleapis.com \
     run.googleapis.com \
     --project=${PROJECT_ID} --quiet
-sleep 60 # Wait for API activation propagation <pre><code>
+sleep 60 # Wait for API activation propagation ```
 
 ## Step 3: Fetch Project Number (needed for Pub/Sub Service Agent)
-<pre><code>PROJECT_NUMBER=$(gcloud projects describe ${PROJECT_ID} --format="value(projectNumber)")
-PUB_SUB_SERVICE_AGENT="service-${PROJECT_NUMBER}@gcp-sa-pubsub.iam.gserviceaccount.com"<pre><code>
+```PROJECT_NUMBER=$(gcloud projects describe ${PROJECT_ID} --format="value(projectNumber)")
+PUB_SUB_SERVICE_AGENT="service-${PROJECT_NUMBER}@gcp-sa-pubsub.iam.gserviceaccount.com"```
 
 ## Step 4: Create Cloud SQL Instance (Private IP only)
-<pre><code>
+```
 gcloud sql instances create trading-sql-instance-sb \
     --database-version=POSTGRES_14 \
     --region=asia-southeast2 \
@@ -155,15 +155,15 @@ gcloud sql instances create trading-sql-instance-sb \
     --network=${VPC_NETWORK_NAME} \
     --no-assign-public-ip \
     --project=${PROJECT_ID} \
-    --quiet <pre><code>
+    --quiet ```
 
 
 ## Step 5: Create Cloud SQL Database & Table
-<pre><code>
+```
 gcloud sql databases create trading-db-sb \
     --instance=trading-sql-instance-sb \
     --project=${PROJECT_ID} --quiet
-<pre><code>
+```
 
 # Connect to SQL and create table (requires user IAM to have Cloud SQL Admin)
 gcloud sql connect trading-sql-instance-sb --user=postgres --project=${PROJECT_ID} <<EOF
@@ -177,36 +177,36 @@ CREATE TABLE IF NOT EXISTS market_ticks (
 EOF
 
 # Step 6: Create Pub/Sub Topic and Subscription
-<pre><code>
+```
 gcloud pubsub topics create market-tick-topic-sb --project=${PROJECT_ID} --quiet
 gcloud pubsub subscriptions create market-tick-data-sub \
     --topic=market-tick-topic-sb \
     --ack-deadline=600 \
     --message-retention-duration=7d \
     --project=${PROJECT_ID} --quiet
-<pre><code>
+```
 # Step 7: Create GCS Bucket for Cloud Function Staging
-<pre><code>
+```
 gsutil mb -p ${PROJECT_ID} -l asia-southeast2 gs://${PROJECT_ID}-dataflow-temp
-<pre><code>
+```
 # Step 8: Create Cloud Functions Service Account
-<pre><code>
+```
 gcloud iam service-accounts create trading-cf-sa \
     --display-name="Trading Cloud Function Service Account" \
     --project=${PROJECT_ID}
-<pre><code>
+```
 # Step 9: Create Serverless VPC Access Connector
-<pre><code>
+```
 gcloud compute networks vpc-access connectors create trading-vpc-connector \
     --region=asia-southeast2 \
     --network=${VPC_NETWORK_NAME} \
     --range=10.8.0.0/28 \
     --project=${PROJECT_ID} \
     --quiet
-<pre><code>
+```
 
 # Step 10: Assign IAM Roles to Service Accounts
-<pre><code>
+```
 gcloud projects add-iam-policy-binding ${PROJECT_ID} \
     --member="serviceAccount:${SERVICE_ACCOUNT_CF}" \
     --role="roles/cloudfunctions.invoker" --quiet
@@ -223,24 +223,24 @@ gcloud projects add-iam-policy-binding ${PROJECT_ID} \
 gcloud projects add-iam-policy-binding ${PROJECT_ID} \
     --member="serviceAccount:${PUB_SUB_SERVICE_AGENT}" \
     --role="roles/run.invoker" --quiet
-<pre><code>
+```
 
 # Step 11: Edit market_data_publisher.py (check the files)
-<pre><code>
+```
 
-python3 market_data_publisher.py  <pre><code>
+python3 market_data_publisher.py  ```
 
 # Step 12: Edit main.py (check the files)
 
 # Step 13: make sure requirements.txt file include
-<pre><code>
+```
 requests
 google-cloud-pubsub
 pg8000
-<pre><code>
+```
 
 # Step 12: Deploy the Cloud Function
-<pre><code>
+```
 gcloud functions deploy process_market_ticks \
     --runtime python311 \
     --trigger-topic market-tick-topic-sb \
@@ -258,7 +258,7 @@ echo "--- Next Steps: Run Publisher and Verify ---"
 echo "1. Run the publisher: python3 market_data_publisher.py (in a new Cloud Shell tab)"
 echo "2. Verify data in Cloud SQL Studio (check logs in Cloud Functions console too)"
 
-<pre><code>
+```
 
 # E. Testing and Verification
 After the script completes successfully, follow these steps to verify the pipeline's functionality:
@@ -305,7 +305,7 @@ Navigate to "Cloud SQL Studio".
 Connect to your database (trading-db-sb) using postgres as the user and YOUR_CLOUD_SQL_PASSWORD as the password.
 
 Execute the following SQL query to retrieve the latest data:
-<pre><code> SELECT * FROM market_ticks ORDER BY timestamp DESC LIMIT 10; <pre><code>
+``` SELECT * FROM market_ticks ORDER BY timestamp DESC LIMIT 10; ```
 
 Success Confirmation: If you see rows of market tick data appearing in the query results, your real-time data ingestion pipeline is successfully operational! This confirms data is flowing from Polygon.io, through your publisher, Pub/Sub, Cloud Function, and finally into your Cloud SQL database.
 
