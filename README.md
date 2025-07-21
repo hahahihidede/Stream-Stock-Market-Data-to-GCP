@@ -226,9 +226,215 @@ gcloud projects add-iam-policy-binding ${PROJECT_ID} \
 ```
 
 # Step 11: Edit market_data_publisher.py (check the files)
-```python3 market_data_publisher.py  ```
+Make sure change required field
+```import json
+import time
+import os
+import random
+import requests
+from datetime import datetime, timezone
+from google.cloud import pubsub_v1
+
+# --- CONFIGURATION ---
+# Replace 'your-gcp-project-id' with your actual GCP Project ID
+PROJECT_ID = "your-gcp-project-id"
+TOPIC_ID = "market-tick-topic-sb"
+# Get API key from environment variable (RECOMMENDED for security)
+POLYGON_API_KEY = os.environ.get("POLYGON_API_KEY")
+
+# List of stock tickers to fetch
+SYMBOLS = ["GOOGL", "AAPL", "MSFT", "AMZN", "NVDA", "TSLA", "META", "NFLX"] 
+
+# Polygon.io API endpoint for last trade
+POLYGON_QUOTE_URL = "https://api.polygon.io/v2/last/trade/{ticker}"
+
+publisher = pubsub_v1.PublisherClient()
+topic_path = publisher.topic_path(PROJECT_ID, TOPIC_ID)
+
+def get_realtime_quote(symbol):
+    """Fetches a real-time last trade quote for a given symbol from Polygon.io."""
+    if not POLYGON_API_KEY:
+        print("Error: POLYGON_API_KEY environment variable not set.")
+        return None
+
+    url = POLYGON_QUOTE_URL.format(ticker=symbol)
+    params = {"apiKey": POLYGON_API_KEY}
+
+    try:
+        response = requests.get(url, params=params, timeout=5)
+        response.raise_for_status() # Raise HTTPError for bad responses (4xx or 5xx)
+        data = response.json()
+        
+        if data and data.get("status") == "ok" and "results" in data and data["results"]:
+            last_trade = data["results"]
+            # Polygon.io timestamp is in Unix Nanoseconds for v2/last/trade. Convert to ISO 8601.
+            timestamp_ns = last_trade.get("t") # 't' is the nanosecond timestamp
+            dt_object = datetime.fromtimestamp(timestamp_ns / 1_000_000_000, tz=timezone.utc)
+            iso_timestamp = dt_object.isoformat(timespec='milliseconds') + 'Z' # Ensure 'Z' for UTC
+
+            return {
+                "symbol": symbol,
+                "timestamp": iso_timestamp,
+                "price": last_trade.get("p"), # 'p' is price
+                "volume": last_trade.get("s")  # 's' is size/volume
+            }
+        elif data and data.get("status") == "ERROR":
+            print(f"Polygon.io API Error for {symbol}: {data.get('error')}")
+            return None
+        else:
+            print(f"No valid data or 'results' found for {symbol}. Response: {data}")
+            return None
+
+    except requests.exceptions.RequestException as e:
+        print(f"Request to Polygon.io failed for {symbol}: {e}")
+        return None
+    except json.JSONDecodeError:
+        print(f"Failed to decode JSON response for {symbol}. Response text: {response.text}")
+        return None
+    except Exception as e:
+        print(f"An unexpected error occurred in get_realtime_quote: {e}")
+        return None
+
+def publish_message(data):
+    """Publishes a market tick message to Pub/Sub."""
+    try:
+        message_data = json.dumps(data).encode("utf-8")
+        future = publisher.publish(topic_path, message_data)
+        message_id = future.result() # Blocks until the message is published
+        print(f"Published message ID: {message_id} -> {data['symbol']} Price: {data['price']} Volume: {data['volume']}")
+        
+    except Exception as e:
+        print(f"Error publishing message to Pub/Sub: {e}")
+
+if __name__ == "__main__":
+    if not POLYGON_API_KEY:
+        print("Please set the POLYGON_API_KEY environment variable before running this script.")
+        print("Example: export POLYGON_API_KEY='YOUR_API_KEY'")
+        exit(1)
+
+    print("Starting market data publisher...")
+    print(f"Publishing to topic: {topic_path}")
+    print("Press Ctrl+C to stop.")
+    
+    try:
+        while True:
+            # Randomly select a symbol from our list
+            symbol_to_fetch = random.choice(SYMBOLS)
+            tick_data = get_realtime_quote(symbol_to_fetch)
+            
+            if tick_data:
+                publish_message(tick_data)
+            
+            # Wait for a random interval between 1 and 3 seconds
+            time.sleep(random.uniform(1, 3))
+    except KeyboardInterrupt:
+        print("\nStopping publisher.")
+    except Exception as e:
+        print(f"An unexpected error occurred in main loop: {e}")
+ ```
 
 # Step 12: Edit main.py (check the files)
+Make sure change required field
+```
+import base64
+import json
+from datetime import datetime
+import logging
+import os
+import pg8000.dbapi
+
+# --- CLOUD SQL CONFIGURATION ---
+DB_USER = "postgres"
+DB_PASSWORD = "YOUR_CLOUD_SQL_PASSWORD" # <--- UPDATE THIS PASSWORD!
+# IMPORTANT: REPLACE THIS WITH YOUR CLOUD SQL PRIVATE IP!
+DB_HOST = "YOUR_CLOUD_SQL_PRIVATE_IP" # <--- UPDATE THIS IP!
+DB_NAME = "trading-db-sb"
+TABLE_NAME = "market_ticks"
+
+# --- PUB/SUB CONFIGURATION ---
+PROJECT_ID = os.environ.get('GCP_PROJECT') # Gets project ID from Cloud Functions environment
+PUB_SUB_SUBSCRIPTION = f"projects/{PROJECT_ID}/subscriptions/market-tick-data-sub"
+
+
+class CloudSQLConnectionPool:
+    _connection = None # Using a simple singleton for demonstration; production might use proper pooling
+
+    @classmethod
+    def get_connection(cls):
+        if cls._connection is None or not cls._connection.is_open: # Check if connection exists and is open
+            try:
+                cls._connection = pg8000.dbapi.connect(
+                    user=DB_USER,
+                    password=DB_PASSWORD,
+                    host=DB_HOST,
+                    database=DB_NAME
+                )
+                logging.info(f"Successfully established new Cloud SQL connection to {DB_HOST}/{DB_NAME}")
+            except Exception as e:
+                logging.error(f"Failed to connect to Cloud SQL: {e}")
+                raise
+        return cls._connection
+
+    @classmethod
+    def close_connection(cls):
+        if cls._connection and cls._connection.is_open:
+            cls._connection.close()
+            logging.info("Cloud SQL connection closed.")
+
+def process_pubsub_message(event, context):
+    """
+    Cloud Function triggered by a Pub/Sub message.
+    Parses tick data and inserts it into Cloud SQL.
+    """
+    
+    if 'data' not in event:
+        logging.error('No data found in Pub/Sub message. Skipping processing.')
+        return
+
+    try:
+        # Pub/Sub message data is base64 encoded
+        pubsub_message_data = base64.b64decode(event['data']).decode('utf-8')
+        tick_data = json.loads(pubsub_message_data)
+
+        logging.info(f"Received tick for {tick_data.get('symbol')} at price {tick_data.get('price')}.")
+
+        # Convert timestamp string to datetime object
+        # Ensure timestamp format from publisher expects 'Z' for UTC
+        tick_data['timestamp'] = datetime.fromisoformat(tick_data['timestamp'])
+
+        conn = None
+        try:
+            conn = CloudSQLConnectionPool.get_connection()
+            cursor = conn.cursor()
+
+            insert_query = f"""
+            INSERT INTO {TABLE_NAME} (symbol, timestamp, price, volume)
+            VALUES (%s, %s, %s, %s)
+            ON CONFLICT (symbol, timestamp) DO NOTHING;
+            """
+            
+            cursor.execute(insert_query, (
+                tick_data['symbol'],
+                tick_data['timestamp'],
+                tick_data['price'],
+                tick_data['volume']
+            ))
+            conn.commit()
+            logging.info(f"Successfully inserted tick for {tick_data['symbol']}.")
+
+        except Exception as e:
+            logging.error(f"Error inserting data for {tick_data.get('symbol')}: {e}")
+            if conn:
+                conn.rollback() # Rollback transaction on error
+            raise # Re-raise for Cloud Functions error handling
+        
+    except json.JSONDecodeError as e:
+        logging.error(f"Invalid JSON in Pub/Sub message: {e}. Message: {pubsub_message_data}")
+    except Exception as e:
+        logging.error(f"An unexpected error occurred during message processing: {e}")
+        raise # Re-raise for Cloud Functions error handling
+
+```
 
 # Step 13: make sure requirements.txt file include
 ```
@@ -258,7 +464,7 @@ echo "2. Verify data in Cloud SQL Studio (check logs in Cloud Functions console 
 
 ```
 
-# E. Testing and Verification
+#  Testing and Verification
 After the script completes successfully, follow these steps to verify the pipeline's functionality:
 
 Run the Market Data Publisher: Open a new Cloud Shell tab and execute:
