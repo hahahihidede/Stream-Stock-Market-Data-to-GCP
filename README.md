@@ -112,14 +112,13 @@ Execute the script: Copy the entire script below and paste it into your Cloud Sh
 ### This script automates the full setup and deployment of a real-time market data ingestion pipeline on GCP.
 #
 ## Before running:
-### 1. Replace 'your-gcp-project-id' with your actual GCP Project ID.
-### 2. Replace 'YOUR_CLOUD_SQL_PASSWORD' with a strong password for your Cloud SQL instance.
-### 3. Replace 'YOUR_VPC_NETWORK_NAME' with your actual VPC network name (e.g., 'vpcdce' or 'default').
-### 4. Set your Polygon.io API Key as an environment variable before executing this script:
-###    export POLYGON_API_KEY='YOUR_POLYGON_API_KEY_HERE'
-###    (Replace 'YOUR_POLYGON_API_KEY_HERE' with your actual Polygon.io API key)
-###
-
+1. Replace 'your-gcp-project-id' with your actual GCP Project ID.
+2. Replace 'YOUR_CLOUD_SQL_PASSWORD' with a strong password for your Cloud SQL instance.
+3. Replace 'YOUR_VPC_NETWORK_NAME' with your actual VPC network name (e.g., 'vpcdce' or 'default').
+4. Set your Polygon.io API Key as an environment variable before executing this script:
+```export POLYGON_API_KEY='YOUR_POLYGON_API_KEY_HERE'
+###    (Replace 'YOUR_POLYGON_API_KEY_HERE' with your actual Polygon.io API key)###
+```
 # Deploy The Resource
 
 ## Step 1: Set Project ID
@@ -127,7 +126,7 @@ Execute the script: Copy the entire script below and paste it into your Cloud Sh
 
 ## Step 2: Activate necessary APIs
 
-``` gcloud services enable cloudresourcemanager.googleapis.com sqladmin.googleapis.com pubsub.googleapis.com  storage.googleapis.com  cloudfunctions.googleapis.com pcaccess.googleapis.com eventarc.googleapis.com  run.googleapis.com  --project=${PROJECT_ID}```
+``` gcloud services enable cloudresourcemanager.googleapis.com sqladmin.googleapis.com pubsub.googleapis.com  storage.googleapis.com  cloudfunctions.googleapis.com pcaccess.googleapis.com eventarc.googleapis.com  run.googleapis.com  --project=${PROJECT_ID} ```
 
 
 ## Step 3: Fetch Project Number (needed for Pub/Sub Service Agent)
