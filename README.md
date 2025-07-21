@@ -1,0 +1,1 @@
+# Stream-Stock-Market-Data-to-GCP
