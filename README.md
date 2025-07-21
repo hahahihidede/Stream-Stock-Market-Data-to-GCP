@@ -57,82 +57,13 @@ This solution leverages several key GCP services, each playing a specific role w
 ### Data Flow (Runtime Flow)
 
 This diagram illustrates how data flows through the pipeline from the publisher to the database in real-time.
+![Uploading Untitled diagram _ Mermaid Chart-2025-07-21-075555.png…]()
 
-```mermaid
-graph TD
-    subgraph Publisher Application
-        A[Python Script: market_data_publisher.py]
-    end
 
-    subgraph Google Cloud Platform (GCP)
-        subgraph Cloud Pub/Sub
-            B(Topic: market-tick-topic-sb)
-            C(Subscription: market-tick-data-sub)
-        end
-
-        subgraph Cloud Functions (2nd Gen)
-            D[Cloud Function: process_market_ticks]
-        end
-
-        subgraph Serverless VPC Access
-            E[Connector: trading-vpc-connector]
-        end
-
-        subgraph Cloud SQL (PostgreSQL)
-            F[Instance: trading-sql-instance-sb]
-            G[Database: trading-db-sb<br>Table: market_ticks]
-        end
-    end
-
-    A -- Sends JSON Data --> B
-    B -- Message Published --> C
-    C -- Triggers --> D
-    D -- Private Connection via Connector --> E
-    E -- Connects to Private IP --> F
-    F -- Saves INSERT Data --> G
-
-Service Deployment Flow (Setup Flow)
+## Service Deployment Flow (Setup Flow)
 This diagram outlines the process of deploying and configuring the GCP services to enable the pipeline.
 
-graph TD
-    subgraph User Interaction
-        A[Developer via gcloud CLI]
-    end
-
-    subgraph GCP Core Services
-        B(APIs Activated)
-        C(Cloud SQL Instance & DB)
-        D(Cloud Pub/Sub Topic & Subscription)
-        E(Cloud Storage Bucket - Code Staging)
-        F(Custom Cloud Function Service Account)
-        G(Serverless VPC Access Connector)
-    end
-
-    subgraph Cloud Functions Backend
-        H(Cloud Build: Container Build)
-        I(Artifact Registry: Image Storage)
-        J(Cloud Run: Function Hosting)
-        K(Eventarc: Trigger Management)
-        L(IAM Roles Assigned)
-    end
-
-    A -- Activate APIs --> B
-    A -- Create/Configure --> C
-    A -- Create/Configure --> D
-    A -- Create/Configure --> E
-    A -- Create/Configure --> F
-    A -- Create/Configure --> G
-
-    A -- Assign IAM Roles --> L
-    L -- Enable Interaction For --> F
-    L -- Enable Trigger For --> K
-
-    A -- `gcloud functions deploy` --> H
-    H -- Uploads Code & Dependencies --> E
-    H -- Builds Image & Pushes --> I
-    I -- Deploys as Service --> J
-    J -- Is Configured by --> K
-    K -- Manages Triggers for --> D & J
+<img width="3840" height="831" alt="Untitled diagram _ Mermaid Chart-2025-07-21-075428" src="https://github.com/user-attachments/assets/111b0f16-cb79-42c4-a608-c05e3e739e8e" />
 
 
 Installation & Deployment Guide
