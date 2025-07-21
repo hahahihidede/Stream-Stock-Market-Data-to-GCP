@@ -92,7 +92,6 @@ For the Pub/Sub Service Agent (service-YOUR_PROJECT_NUMBER@gcp-sa-pubsub.iam.gse
 Cloud Run Invoker (roles/run.invoker) - Crucial for Pub/Sub to trigger 2nd Gen Cloud Functions. You can find your YOUR_PROJECT_NUMBER in your GCP Console dashboard (e.g., 403974804730).
 
 ### One-Shot Setup and Deployment Script
-This single shell script will handle the creation of all GCP resources, the configuration of IAM roles for service accounts, the creation of Python code files (with injected dynamic values), and the deployment of the Cloud Function.
 
 Before Running:
 
@@ -104,8 +103,6 @@ Replace YOUR_VPC_NETWORK_NAME with your actual VPC network name (e.g., vpcdce or
 
 Set your Polygon.io API Key as an environment variable in your shell: 
 ```export POLYGON_API_KEY='YOUR_POLYGON_API_KEY_HERE'```
-(replace with your actual key).
-
 
 # Deploy The Resource
 
