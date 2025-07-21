@@ -60,14 +60,14 @@ This diagram illustrates how data flows through the pipeline from the publisher 
 ![Uploading Untitled diagram _ Mermaid Chart-2025-07-21-075555.png…]()
 
 
-## Service Deployment Flow (Setup Flow)
+### Service Deployment Flow (Setup Flow)
 This diagram outlines the process of deploying and configuring the GCP services to enable the pipeline.
 
 <img width="3840" height="831" alt="Untitled diagram _ Mermaid Chart-2025-07-21-075428" src="https://github.com/user-attachments/assets/111b0f16-cb79-42c4-a608-c05e3e739e8e" />
 
 
-Installation & Deployment Guide
-A. Initial IAM Setup
+## Installation & Deployment Guide
+### A. Initial IAM Setup
 IAM is a critical enabling layer for all service interactions. Ensure these IAM roles are assigned in your your-gcp-project-id project. Replace placeholders like your-gcp-user-email@your-domain.com, your-gcp-project-id, and YOUR_PROJECT_NUMBER with your actual values.
 
 For your user account (your-gcp-user-email@your-domain.com):
@@ -90,7 +90,7 @@ For the Pub/Sub Service Agent (service-YOUR_PROJECT_NUMBER@gcp-sa-pubsub.iam.gse
 
 Cloud Run Invoker (roles/run.invoker) - Crucial for Pub/Sub to trigger 2nd Gen Cloud Functions. You can find your YOUR_PROJECT_NUMBER in your GCP Console dashboard (e.g., 403974804730).
 
-B. One-Shot Setup and Deployment Script
+### B. One-Shot Setup and Deployment Script
 This single shell script will handle the creation of all GCP resources, the configuration of IAM roles for service accounts, the creation of Python code files (with injected dynamic values), and the deployment of the Cloud Function.
 
 Before Running:
