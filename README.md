@@ -57,7 +57,8 @@ This solution leverages several key GCP services, each playing a specific role w
 ### Data Flow (Runtime Flow)
 
 This diagram illustrates how data flows through the pipeline from the publisher to the database in real-time.
-![Uploading Untitled diagram _ Mermaid Chart-2025-07-21-075555.png…]()
+<img width="1142" height="3840" alt="Untitled diagram _ Mermaid Chart-2025-07-21-075555" src="https://github.com/user-attachments/assets/41550f2a-ac5e-4ccf-9005-7bae5767194d" />
+
 
 
 ### Service Deployment Flow (Setup Flow)
@@ -122,25 +123,15 @@ Execute the script: Copy the entire script below and paste it into your Cloud Sh
 # Deploy The Resource
 
 ## Step 1: Set Project ID
-gcloud config set project ${PROJECT_ID} ```
+```gcloud config set project ${PROJECT_ID} ```
 
 ## Step 2: Activate necessary APIs
-```
-gcloud services enable \
-    cloudresourcemanager.googleapis.com \
-    sqladmin.googleapis.com \
-    pubsub.googleapis.com \
-    storage.googleapis.com \
-    cloudfunctions.googleapis.com \
-    vpcaccess.googleapis.com \
-    eventarc.googleapis.com \
-    run.googleapis.com \
-    --project=${PROJECT_ID} --quiet
-sleep 60 # Wait for API activation propagation ```
+
+``` gcloud services enable cloudresourcemanager.googleapis.com sqladmin.googleapis.com pubsub.googleapis.com  storage.googleapis.com  cloudfunctions.googleapis.com pcaccess.googleapis.com eventarc.googleapis.com  run.googleapis.com  --project=${PROJECT_ID}```
+
 
 ## Step 3: Fetch Project Number (needed for Pub/Sub Service Agent)
-```PROJECT_NUMBER=$(gcloud projects describe ${PROJECT_ID} --format="value(projectNumber)")
-PUB_SUB_SERVICE_AGENT="service-${PROJECT_NUMBER}@gcp-sa-pubsub.iam.gserviceaccount.com"```
+```PROJECT_NUMBER=$(gcloud projects describe ${PROJECT_ID} --format="value(projectNumber)") PUB_SUB_SERVICE_AGENT="service-${PROJECT_NUMBER}@gcp-sa-pubsub.iam.gserviceaccount.com"```
 
 ## Step 4: Create Cloud SQL Instance (Private IP only)
 ```
@@ -157,7 +148,7 @@ gcloud sql instances create trading-sql-instance-sb \
     --project=${PROJECT_ID} \
     --quiet ```
 
-
+```
 ## Step 5: Create Cloud SQL Database & Table
 ```
 gcloud sql databases create trading-db-sb \
@@ -165,8 +156,8 @@ gcloud sql databases create trading-db-sb \
     --project=${PROJECT_ID} --quiet
 ```
 
-# Connect to SQL and create table (requires user IAM to have Cloud SQL Admin)
-gcloud sql connect trading-sql-instance-sb --user=postgres --project=${PROJECT_ID} <<EOF
+## Step 6 Connect to SQL and create table (requires user IAM to have Cloud SQL Admin)
+```gcloud sql connect trading-sql-instance-sb --user=postgres --project=${PROJECT_ID} <<EOF
 CREATE TABLE IF NOT EXISTS market_ticks (
     symbol VARCHAR(10) NOT NULL,
     timestamp TIMESTAMP NOT NULL,
@@ -175,8 +166,8 @@ CREATE TABLE IF NOT EXISTS market_ticks (
     PRIMARY KEY (symbol, timestamp)
 );
 EOF
-
-# Step 6: Create Pub/Sub Topic and Subscription
+```
+## Step 7: Create Pub/Sub Topic and Subscription
 ```
 gcloud pubsub topics create market-tick-topic-sb --project=${PROJECT_ID} --quiet
 gcloud pubsub subscriptions create market-tick-data-sub \
@@ -185,17 +176,17 @@ gcloud pubsub subscriptions create market-tick-data-sub \
     --message-retention-duration=7d \
     --project=${PROJECT_ID} --quiet
 ```
-# Step 7: Create GCS Bucket for Cloud Function Staging
+## Step 8: Create GCS Bucket for Cloud Function Staging
 ```
 gsutil mb -p ${PROJECT_ID} -l asia-southeast2 gs://${PROJECT_ID}-dataflow-temp
 ```
-# Step 8: Create Cloud Functions Service Account
+## Step 9: Create Cloud Functions Service Account
 ```
 gcloud iam service-accounts create trading-cf-sa \
     --display-name="Trading Cloud Function Service Account" \
     --project=${PROJECT_ID}
 ```
-# Step 9: Create Serverless VPC Access Connector
+## Step 10: Create Serverless VPC Access Connector
 ```
 gcloud compute networks vpc-access connectors create trading-vpc-connector \
     --region=asia-southeast2 \
@@ -205,7 +196,7 @@ gcloud compute networks vpc-access connectors create trading-vpc-connector \
     --quiet
 ```
 
-# Step 10: Assign IAM Roles to Service Accounts
+## Step 11: Assign IAM Roles to Service Accounts
 ```
 gcloud projects add-iam-policy-binding ${PROJECT_ID} \
     --member="serviceAccount:${SERVICE_ACCOUNT_CF}" \
@@ -225,9 +216,10 @@ gcloud projects add-iam-policy-binding ${PROJECT_ID} \
     --role="roles/run.invoker" --quiet
 ```
 
-# Step 11: Edit market_data_publisher.py (check the files)
+## Step 12: Edit market_data_publisher.py (check the files)
 Make sure change required field
-```import json
+```
+import json
 import time
 import os
 import random
@@ -333,7 +325,7 @@ if __name__ == "__main__":
         print(f"An unexpected error occurred in main loop: {e}")
  ```
 
-# Step 12: Edit main.py (check the files)
+## Step 13: Edit main.py (check the files)
 Make sure change required field
 ```
 import base64
@@ -436,14 +428,14 @@ def process_pubsub_message(event, context):
 
 ```
 
-# Step 13: make sure requirements.txt file include
+## Step 14: make sure requirements.txt file include
 ```
 requests
 google-cloud-pubsub
 pg8000
 ```
 
-# Step 12: Deploy the Cloud Function
+## Step 15: Deploy the Cloud Function
 ```
 gcloud functions deploy process_market_ticks \
     --runtime python311 \
@@ -468,7 +460,7 @@ echo "2. Verify data in Cloud SQL Studio (check logs in Cloud Functions console 
 After the script completes successfully, follow these steps to verify the pipeline's functionality:
 
 Run the Market Data Publisher: Open a new Cloud Shell tab and execute:
-python3 market_data_publisher.py
+```python3 market_data_publisher.py```
 This script will start fetching real-time data from Polygon.io and publishing it to Pub/Sub. Keep this tab open and running.
 Confirm Pub/Sub Message Flow:
 
