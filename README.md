@@ -40,7 +40,7 @@ This solution leverages several key GCP services, each playing a specific role w
     *   **Role:** Fully managed relational database service. Stores the ingested market tick data persistently.
     *   **Interaction:** Receives data inserts from the Cloud Function via its private IP address.
 5.  **Cloud Storage (GCS):**
-    *   **Role:** Object storage service. Used as a staging bucket during Cloud Function deployment, where your function's code and dependencies are temporarily stored.
+    *   **Role:** Object storage service. Used as a staging bucket during the deployment of Cloud Functions, where your function's code and dependencies are temporarily stored.
     *   **Interaction:** Cloud Build uploads the function's source code and dependencies to a GCS bucket before building the container image.
 6.  **Cloud Build:**
     *   **Role:** CI/CD platform. Used by `gcloud functions deploy` (behind the scenes) to build the Cloud Function's container image from source code.
@@ -90,13 +90,13 @@ graph TD
     D -- Private Connection via Connector --> E
     E -- Connects to Private IP --> F
     F -- Saves INSERT Data --> G
+
 Service Deployment Flow (Setup Flow)
 This diagram outlines the process of deploying and configuring the GCP services to enable the pipeline.
 
-mermaid
 graph TD
     subgraph User Interaction
-        A[Developer (via gcloud CLI)]
+        A[Developer via gcloud CLI]
     end
 
     subgraph GCP Core Services
@@ -113,7 +113,7 @@ graph TD
         I(Artifact Registry: Image Storage)
         J(Cloud Run: Function Hosting)
         K(Eventarc: Trigger Management)
-    L(IAM Roles Assigned)
+        L(IAM Roles Assigned)
     end
 
     A -- Activate APIs --> B
@@ -133,6 +133,8 @@ graph TD
     I -- Deploys as Service --> J
     J -- Is Configured by --> K
     K -- Manages Triggers for --> D & J
+
+
 Installation & Deployment Guide
 A. Initial IAM Setup
 IAM is a critical enabling layer for all service interactions. Ensure these IAM roles are assigned in your your-gcp-project-id project. Replace placeholders like your-gcp-user-email@your-domain.com, your-gcp-project-id, and YOUR_PROJECT_NUMBER with your actual values.
@@ -172,7 +174,6 @@ Set your Polygon.io API Key as an environment variable in your shell: export POL
 
 Execute the script: Copy the entire script below and paste it into your Cloud Shell terminal. Press Enter. This script is designed to be executed as one contiguous block.
 
-bash
 #!/bin/bash
 # This script automates the full setup and deployment of a real-time market data ingestion pipeline on GCP.
 #
@@ -513,7 +514,14 @@ def process_pubsub_message(event, context):
 
         logging.info(f"Received tick for {tick_data.get('symbol')} at price {tick_data.get('price')}.")
 
-        tick_data['timestamp'] = datetime.fromisoformat(tick_data['timestamp'])
+        # Polygon.io timestamp is in Unix Nanoseconds for v2/last/trade. Convert to ISO 8601.
+        # It comes as milliseconds string if it is a backfill from a polygon client library, use the `Z` to handle UTC
+        # If it is missing 'Z' or offset, python assumes local timezone, which is problematic
+        # fromisoformat requires exact format, so we manually check and add 'Z' if missing.
+        ts_str = tick_data['timestamp']
+        if not (ts_str.endswith('Z') or '+' in ts_str or '-' in ts_str[10:]): # Basic check for timezone info
+            ts_str += 'Z' # Assume UTC if no timezone info, based on Polygon.io data
+        tick_data['timestamp'] = datetime.fromisoformat(ts_str)
 
         conn = None
         try:
@@ -573,15 +581,13 @@ echo "--- Pipeline Setup and Deployment Complete ---"
 echo "--- Next Steps: Run Publisher and Verify ---"
 echo "1. Run the publisher: python3 market_data_publisher.py (in a new Cloud Shell tab)"
 echo "2. Verify data in Cloud SQL Studio (check logs in Cloud Functions console too)"
+
 E. Testing and Verification
 After the script completes successfully, follow these steps to verify the pipeline's functionality:
 
 Run the Market Data Publisher: Open a new Cloud Shell tab and execute:
-
-bash
 python3 market_data_publisher.py
 This script will start fetching real-time data from Polygon.io and publishing it to Pub/Sub. Keep this tab open and running.
-
 Confirm Pub/Sub Message Flow:
 
 Go to GCP Console > Pub/Sub > Topics.
@@ -621,15 +627,13 @@ Navigate to "Cloud SQL Studio".
 Connect to your database (trading-db-sb) using postgres as the user and YOUR_CLOUD_SQL_PASSWORD as the password.
 
 Execute the following SQL query to retrieve the latest data:
-
-SQL
 SELECT * FROM market_ticks ORDER BY timestamp DESC LIMIT 10;
+
 Success Confirmation: If you see rows of market tick data appearing in the query results, your real-time data ingestion pipeline is successfully operational! This confirms data is flowing from Polygon.io, through your publisher, Pub/Sub, Cloud Function, and finally into your Cloud SQL database.
+
 
 Cleanup
 To avoid incurring unexpected charges, remember to clean up all created resources after you are done.
-
-bash
 # Set Project ID
 gcloud config set project your-gcp-project-id
 
@@ -658,4 +662,5 @@ gcloud iam service-accounts delete trading-cf-sa@your-gcp-project-id.iam.gservic
 
 # Important: Manually review and remove IAM roles assigned to your user account and the Pub/Sub Service Agent
 # in GCP Console > IAM & Admin > IAM.
-# E.g., Cloud SQL Admin, Cloud Functions Admin, Cloud Run Admin, Cloud Run Invoke
+# E.g., Cloud SQL Admin, Cloud Functions Admin, Cloud Run Admin, Cloud Run Invoker (for Pub/Sub SA), etc.
+
