@@ -226,9 +226,7 @@ gcloud projects add-iam-policy-binding ${PROJECT_ID} \
 ```
 
 # Step 11: Edit market_data_publisher.py (check the files)
-```
-
-python3 market_data_publisher.py  ```
+```python3 market_data_publisher.py  ```
 
 # Step 12: Edit main.py (check the files)
 
