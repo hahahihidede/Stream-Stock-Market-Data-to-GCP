@@ -6,11 +6,12 @@ import os
 import pg8000.dbapi
 
 # --- CLOUD SQL CONFIGURATION ---
-DB_USER = "postgres"
-DB_PASSWORD = "YOUR_CLOUD_SQL_PASSWORD" # <--- UPDATE THIS PASSWORD!
-# IMPORTANT: REPLACE THIS WITH YOUR CLOUD SQL PRIVATE IP!
-DB_HOST = "YOUR_CLOUD_SQL_PRIVATE_IP" # <--- UPDATE THIS IP!
-DB_NAME = "trading-db-sb"
+# These variables are intended to be set via environment variables,
+# as shown in the deployment command in the README.
+DB_USER = os.environ.get("DB_USER", "postgres")
+DB_PASSWORD = os.environ.get("DB_PASSWORD") # No default, should be injected.
+DB_HOST = os.environ.get("DB_HOST")         # No default, should be injected.
+DB_NAME = os.environ.get("DB_NAME", "trading-db-sb")
 TABLE_NAME = "market_ticks"
 
 # --- PUB/SUB CONFIGURATION ---
@@ -74,7 +75,7 @@ def process_pubsub_message(event, context):
             VALUES (%s, %s, %s, %s)
             ON CONFLICT (symbol, timestamp) DO NOTHING;
             """
-            
+
             cursor.execute(insert_query, (
                 tick_data['symbol'],
                 tick_data['timestamp'],
@@ -87,8 +88,11 @@ def process_pubsub_message(event, context):
         except Exception as e:
             logging.error(f"Error inserting data for {tick_data.get('symbol')}: {e}")
             if conn:
-                conn.rollback() # Rollback transaction on error
-            raise # Re-raise for Cloud Functions error handling
+                conn.rollback()  # Rollback transaction on error
+            raise  # Re-raise for Cloud Functions error handling
+        finally:
+            # Ensure the connection is closed after each invocation.
+            CloudSQLConnectionPool.close_connection()
         
     except json.JSONDecodeError as e:
         logging.error(f"Invalid JSON in Pub/Sub message: {e}. Message: {pubsub_message_data}")

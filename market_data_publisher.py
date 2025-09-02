@@ -7,8 +7,8 @@ from datetime import datetime, timezone
 from google.cloud import pubsub_v1
 
 # --- CONFIGURATION ---
-# Replace 'your-gcp-project-id' with your actual GCP Project ID
-PROJECT_ID = "your-gcp-project-id"
+# Get GCP Project ID from environment variable.
+PROJECT_ID = os.environ.get("GCP_PROJECT_ID")
 TOPIC_ID = "market-tick-topic-sb"
 # Get API key from environment variable (RECOMMENDED for security)
 POLYGON_API_KEY = os.environ.get("POLYGON_API_KEY")
@@ -78,8 +78,16 @@ def publish_message(data):
         print(f"Error publishing message to Pub/Sub: {e}")
 
 if __name__ == "__main__":
+    # Validate that required environment variables are set
+    if not PROJECT_ID:
+        print("Error: The GCP_PROJECT_ID environment variable is not set.")
+        print("Please set it to your Google Cloud Project ID and re-run the script.")
+        print("Example: export GCP_PROJECT_ID='your-gcp-project-id'")
+        exit(1)
+
     if not POLYGON_API_KEY:
-        print("Please set the POLYGON_API_KEY environment variable before running this script.")
+        print("Error: The POLYGON_API_KEY environment variable is not set.")
+        print("Please set it before running this script.")
         print("Example: export POLYGON_API_KEY='YOUR_API_KEY'")
         exit(1)
 
